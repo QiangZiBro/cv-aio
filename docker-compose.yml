@@ -8,10 +8,8 @@ services:
     volumes:
         - .:/workspace
     tty: true
-    network_mode: "host"
-    environment:
-      - "http_proxy=${http_proxy}"
-      - "https_proxy=${https_proxy}"
+    ports:
+      - 11000:11000
     entrypoint: sh -c "jupyter lab --ip=0.0.0.0 --port=11000 --no-browser --notebook-dir=/workspace --allow-root --NotebookApp.token='cv-aio' --NotebookApp.password='cv-aio'"
     deploy:
       resources:

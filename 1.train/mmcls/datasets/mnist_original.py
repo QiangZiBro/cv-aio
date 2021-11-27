@@ -1,7 +1,4 @@
 # Copyright (c) OpenMMLab. All rights reserved.
-# Using data from graviti
-# Author: QiangZiBro
-# Contact: Github/QiangZiBro
 import codecs
 import os
 import os.path as osp
@@ -11,18 +8,13 @@ import torch
 import torch.distributed as dist
 from mmcv.runner import get_dist_info, master_only
 
-from tqdm import tqdm
-from tensorbay import GAS
-from tensorbay.dataset import Dataset
-from PIL import Image
 from .base_dataset import BaseDataset
 from .builder import DATASETS
 from .utils import download_and_extract_archive, rm_suffix
-from .gas import GAS_KEY
+
 
 @DATASETS.register_module()
 class MNIST(BaseDataset):
-#class MNISTGraviti(BaseDataset):
     """`MNIST <http://yann.lecun.com/exdb/mnist/>`_ Dataset.
 
     This implementation is modified from
@@ -56,10 +48,10 @@ class MNIST(BaseDataset):
         test_label_file = osp.join(
             self.data_prefix, rm_suffix(self.resources['test_label_file'][0]))
 
-        #if not osp.exists(train_image_file) or not osp.exists(
-        #        train_label_file) or not osp.exists(
-        #            test_image_file) or not osp.exists(test_label_file):
-        #    self.download()
+        if not osp.exists(train_image_file) or not osp.exists(
+                train_label_file) or not osp.exists(
+                    test_image_file) or not osp.exists(test_label_file):
+            self.download()
 
         _, world_size = get_dist_info()
         if world_size > 1:
@@ -70,23 +62,21 @@ class MNIST(BaseDataset):
                 'Shared storage seems unavailable. Please download dataset ' \
                 f'manually through {self.resource_prefix}.'
 
-
-        # Authorize a GAS client.
-        gas = GAS(GAS_KEY)
-        dataset = Dataset("MNIST", gas)
-        dataset.enable_cache(self.data_prefix)
+        train_set = (read_image_file(train_image_file),
+                     read_label_file(train_label_file))
+        test_set = (read_image_file(test_image_file),
+                    read_label_file(test_label_file))
 
         if not self.test_mode:
-            segment = dataset["train"]
+            imgs, gt_labels = train_set
         else:
-            segment = dataset["test"]
+            imgs, gt_labels = test_set
 
         data_infos = []
-        print("reading data from graviti")
-        for data in tqdm(segment):
-            img, gt_label = read_gas_image(data)
-            info = {'img': img, 'gt_label': gt_label}
-        print("read done")
+        for img, gt_label in zip(imgs, gt_labels):
+            gt_label = np.array(gt_label, dtype=np.int64)
+            info = {'img': img.numpy(), 'gt_label': gt_label}
+            data_infos.append(info)
         return data_infos
 
     @master_only
@@ -193,10 +183,3 @@ def read_image_file(path):
     assert (x.dtype == torch.uint8)
     assert (x.ndimension() == 3)
     return x
-
-def read_gas_image(data):
-    with data.open() as fp:
-        image = Image.open(fp)
-    return np.array(image), data.label.classification.category
-
-
