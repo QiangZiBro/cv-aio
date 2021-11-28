@@ -86,6 +86,7 @@ class MNIST(BaseDataset):
         for data in tqdm(segment):
             with data.open() as fp:
                 img = Image.open(fp)
+                img = np.asarray(img)
             gt_label = data.label.classification.category
             info = {'img': img, 'gt_label': gt_label}
             data_infos.append(info)
