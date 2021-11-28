@@ -84,8 +84,11 @@ class MNIST(BaseDataset):
         data_infos = []
         print("reading data from graviti")
         for data in tqdm(segment):
-            img, gt_label = read_gas_image(data)
+            with data.open() as fp:
+                img = Image.open(fp)
+            gt_label = data.label.classification.category
             info = {'img': img, 'gt_label': gt_label}
+            data_infos.append(info)
         print("read done")
         return data_infos
 
