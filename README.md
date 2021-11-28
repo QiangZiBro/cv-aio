@@ -15,3 +15,12 @@ cd 1.train
 ./run.sh
 ```
 
+
+
+
+
+## 一些小尝试
+
+- 将Graviti集成到mmdetection中,[link](1.train/mmcls/datasets/mnist.py)
+
+  
