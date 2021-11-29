@@ -28,8 +28,7 @@ class Gravati:
         self._gas = GAS(key)
         
     def __call__(self, name, partition="train", data_prefix="data"):
-        from tensorbay.dataset import Dataset
-        dataset = Dataset(name, gas)
+        dataset = Dataset(name, self._gas)
         dataset.enable_cache(data_prefix)
         segment = dataset[partition]
         return segment
