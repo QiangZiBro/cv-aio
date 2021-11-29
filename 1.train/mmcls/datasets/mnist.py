@@ -14,6 +14,8 @@ from mmcv.runner import get_dist_info, master_only
 from tqdm import tqdm
 from tensorbay import GAS
 from tensorbay.dataset import Dataset
+from tensorbay.client import config
+
 from PIL import Image
 from .base_dataset import BaseDataset
 from .builder import DATASETS
@@ -74,6 +76,9 @@ class MNIST(BaseDataset):
         # Authorize a GAS client.
         gas = GAS(GAS_KEY)
         dataset = Dataset("MNIST", gas)
+        # Enlarge timeout and max_retries of configuration.
+        config.timeout = 400
+        config.max_retries = 10
         dataset.enable_cache(self.data_prefix)
 
         if not self.test_mode:
