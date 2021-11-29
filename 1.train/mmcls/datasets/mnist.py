@@ -15,12 +15,24 @@ from tqdm import tqdm
 from tensorbay import GAS
 from tensorbay.dataset import Dataset
 from tensorbay.client import config
+from multiprocessing.dummy import Pool
 
 from PIL import Image
 from .base_dataset import BaseDataset
 from .builder import DATASETS
 from .utils import download_and_extract_archive, rm_suffix
 from .gas import GAS_KEY
+
+class Gravati:
+    def __init__(self, key):
+        self._gas = GAS(key)
+        
+    def __call__(self, name, partition="train", data_prefix="data"):
+        from tensorbay.dataset import Dataset
+        dataset = Dataset(name, gas)
+        dataset.enable_cache(data_prefix)
+        segment = dataset[partition]
+        return segment
 
 @DATASETS.register_module()
 class MNIST(BaseDataset):
@@ -73,29 +85,26 @@ class MNIST(BaseDataset):
                 f'manually through {self.resource_prefix}.'
 
 
-        # Authorize a GAS client.
-        gas = GAS(GAS_KEY)
-        dataset = Dataset("MNIST", gas)
-        # Enlarge timeout and max_retries of configuration.
-        config.timeout = 400
-        config.max_retries = 10
-        dataset.enable_cache(self.data_prefix)
-
+        graviti = Gravati(GAS_KEY)
         if not self.test_mode:
-            segment = dataset["train"]
+            d = graviti("MNIST","train", data_prefix=self.data_prefix)
         else:
-            segment = dataset["test"]
+            d = graviti("MNIST","test", data_prefix=self.data_prefix)
 
-        data_infos = []
-        print("reading data from graviti")
-        for data in tqdm(segment):
+        def _read(data):
             with data.open() as fp:
                 img = Image.open(fp)
                 img = np.asarray(img)
             gt_label = data.label.classification.category
             info = {'img': img, 'gt_label': gt_label}
-            data_infos.append(info)
+            return info
+
+        # 多线程加载
+        print("reading data from graviti")
+        with Pool(4) as p:
+            data_infos=list(tqdm(p.imap(_read, d), total=len(d)))
         print("read done")
+
         return data_infos
 
     @master_only
